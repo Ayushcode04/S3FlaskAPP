@@ -3,3 +3,4 @@ gunicorn
 boto3
 botocore
 Werkzeug
+python-dotenv
