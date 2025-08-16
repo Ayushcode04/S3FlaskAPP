@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-3">S3 Buckets</h2>
+
+<form method="POST" action="/create-bucket" class="d-flex mb-3">
+    <input name="bucket_name" class="form-control me-2" placeholder="Bucket name" required>
+    <button class="btn btn-primary">Create</button>
+</form>
+
+<table class="table table-bordered bg-white">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th style="width: 150px;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bucket in buckets %}
+        <tr>
+            <td>
+                <a href="{{ url_for('view_bucket', bucket_name=bucket) }}">
+                    {{ bucket }}
+                </a>
+            </td>
+            <td>
+                <form method="POST" action="/delete-bucket" style="display:inline;">
+                    <input type="hidden" name="bucket_name" value="{{ bucket }}">
+                    <button class="btn btn-danger btn-sm" onclick="return confirm('Delete bucket? Must be empty.')">
+                        Delete
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="mb-0">Bucket: <span class="text-muted">{{ bucket }}</span></h3>
+    <a href="{{ url_for('list_buckets_page') }}" class="btn btn-secondary">← Back to Buckets</a>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-3">
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}" role="alert">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Upload form -->
+  <form method="POST" action="{{ url_for('upload_file', bucket_name=bucket) }}" enctype="multipart/form-data" class="d-flex gap-2 mb-4">
+    <input type="file" name="file" class="form-control" required>
+    <button class="btn btn-success">Upload</button>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-hover table-bordered bg-white">
+      <thead class="table-light">
+        <tr>
+          <th style="width:55%">Object Key</th>
+          <th style="width:45%" class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if objects %}
+          {% for key in objects %}
+          <tr>
+            <td class="align-middle"><code>{{ key }}</code></td>
+            <td class="align-middle">
+              <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center">
+
+                <!-- Download -->
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_file', bucket_name=bucket, key=key) }}">
+                  <i class="bi bi-download"></i> Download
+                </a>
+
+                <!-- Delete -->
+                <a class="btn btn-sm btn-outline-danger" href="{{ url_for('delete_file', bucket_name=bucket, key=key) }}" onclick="return confirm('Delete {{ key }}?')">
+                  <i class="bi bi-trash"></i> Delete
+                </a>
+
+                <!-- Copy form -->
+                <form method="POST" action="{{ url_for('copy_object') }}" class="d-flex gap-1 align-items-center" style="margin:0;">
+                  <input type="hidden" name="src_bucket" value="{{ bucket }}">
+                  <input type="hidden" name="src_key" value="{{ key }}">
+                  <select name="dest_bucket" class="form-select form-select-sm" required>
+                    <option value="" selected disabled>Copy to…</option>
+                    {% for b in all_buckets %}
+                      {% if b != bucket %}
+                        <option value="{{ b }}">{{ b }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                  <button class="btn btn-sm btn-primary">Copy</button>
+                </form>
+
+                <!-- Move form -->
+                <form method="POST" action="{{ url_for('move_object') }}" class="d-flex gap-1 align-items-center" style="margin:0;">
+                  <input type="hidden" name="src_bucket" value="{{ bucket }}">
+                  <input type="hidden" name="src_key" value="{{ key }}">
+                  <select name="dest_bucket" class="form-select form-select-sm" required>
+                    <option value="" selected disabled>Move to…</option>
+                    {% for b in all_buckets %}
+                      {% if b != bucket %}
+                        <option value="{{ b }}">{{ b }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                  <button class="btn btn-sm btn-warning">Move</button>
+                </form>
+
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="2" class="text-center text-muted p-4">No objects found in this bucket.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
