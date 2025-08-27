@@ -7,21 +7,47 @@
     <a href="{{ url_for('list_buckets_page') }}" class="btn btn-secondary">← Back to Buckets</a>
   </div>
 
-  <!-- Flash messages -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="mb-3">
-        {% for category, msg in messages %}
-          <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}" role="alert">
-            {{ msg }}
-          </div>
+  <!-- breadcrumb: bucket as root + current path -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('view_bucket', bucket_name=bucket) }}">{{ bucket }}</a>
+      </li>
+      {% if prefix %}
+        {% set parts = prefix.rstrip('/').split('/') %}
+        {% set running = "" %}
+        {% for p in parts %}
+          {% set running = running + p + '/' %}
+          <li class="breadcrumb-item {% if loop.last %}active{% endif %}">
+            {% if loop.last %}
+              {{ p }}
+            {% else %}
+              <a href="{{ url_for('view_bucket', bucket_name=bucket, prefix=running) }}">{{ p }}</a>
+            {% endif %}
+          </li>
         {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
+      {% endif %}
+    </ol>
+  </nav>
+
+  <div class="mb-3">
+    <small class="text-muted">Current: <strong>{{ prefix if prefix else '/' }}</strong></small>
+  </div>
+
+  <!-- Create folder -->
+  <form method="POST" action="{{ url_for('create_folder', bucket_name=bucket) }}" class="row g-2 mb-3">
+    <input type="hidden" name="prefix" value="{{ prefix }}">
+    <div class="col-auto">
+      <input name="folder_name" class="form-control" placeholder="New folder name" required>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-primary">Create Folder</button>
+    </div>
+  </form>
 
   <!-- Upload form -->
   <form method="POST" action="{{ url_for('upload_file', bucket_name=bucket) }}" enctype="multipart/form-data" class="d-flex gap-2 mb-4">
+    <input type="hidden" name="prefix" value="{{ prefix }}">
     <input type="file" name="file" class="form-control" required>
     <button class="btn btn-success">Upload</button>
   </form>
@@ -30,64 +56,76 @@
     <table class="table table-hover table-bordered bg-white">
       <thead class="table-light">
         <tr>
-          <th style="width:55%">Object Key</th>
+          <th style="width:55%">Name</th>
           <th style="width:45%" class="text-center">Actions</th>
         </tr>
       </thead>
       <tbody>
+        {# Folders #}
+        {% for f in folders %}
+        {% set name = f[prefix|length:] if prefix else f %}
+        {% set display = name.rstrip('/') %}
+        <tr>
+          <td><i class="bi bi-folder-fill me-2 text-warning"></i>
+              <a href="{{ url_for('view_bucket', bucket_name=bucket, prefix=f) }}">{{ display }}</a>
+          </td>
+          <td class="text-end">
+            <form method="POST" action="{{ url_for('delete_folder', bucket_name=bucket) }}" style="display:inline;">
+              <input type="hidden" name="folder_prefix" value="{{ f }}">
+              <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete folder and all contents?')">Delete Folder</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+
+        {# Files #}
         {% if objects %}
           {% for key in objects %}
+          {% set name = key[prefix|length:] if prefix else key %}
           <tr>
-            <td class="align-middle"><code>{{ key }}</code></td>
+            <td class="align-middle"><code>{{ name }}</code></td>
             <td class="align-middle">
               <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center">
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_file', bucket_name=bucket, key=key) }}">Download</a>
+                <a class="btn btn-sm btn-outline-danger" href="{{ url_for('delete_file', bucket_name=bucket, key=key) }}" onclick="return confirm('Delete {{ name }}?')">Delete</a>
 
-                <!-- Download -->
-                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_file', bucket_name=bucket, key=key) }}">
-                  <i class="bi bi-download"></i> Download
-                </a>
-
-                <!-- Delete -->
-                <a class="btn btn-sm btn-outline-danger" href="{{ url_for('delete_file', bucket_name=bucket, key=key) }}" onclick="return confirm('Delete {{ key }}?')">
-                  <i class="bi bi-trash"></i> Delete
-                </a>
-
-                <!-- Copy form -->
+                <!-- Copy form (now accepts optional dest_key) -->
                 <form method="POST" action="{{ url_for('copy_object') }}" class="d-flex gap-1 align-items-center" style="margin:0;">
                   <input type="hidden" name="src_bucket" value="{{ bucket }}">
                   <input type="hidden" name="src_key" value="{{ key }}">
-                  <select name="dest_bucket" class="form-select form-select-sm" required>
-                    <option value="" selected disabled>Copy to…</option>
+                  <select name="dest_bucket" class="form-select form-select-sm" required style="min-width:160px;">
+                    <option value="" selected disabled>Copy to bucket…</option>
                     {% for b in all_buckets %}
                       {% if b != bucket %}
                         <option value="{{ b }}">{{ b }}</option>
                       {% endif %}
                     {% endfor %}
                   </select>
+                  <input name="dest_key" class="form-control form-control-sm" placeholder="dest/path/ or dest/path/file.ext" style="width:240px;" />
                   <button class="btn btn-sm btn-primary">Copy</button>
                 </form>
 
-                <!-- Move form -->
+                <!-- Move form (now accepts optional dest_key) -->
                 <form method="POST" action="{{ url_for('move_object') }}" class="d-flex gap-1 align-items-center" style="margin:0;">
                   <input type="hidden" name="src_bucket" value="{{ bucket }}">
                   <input type="hidden" name="src_key" value="{{ key }}">
-                  <select name="dest_bucket" class="form-select form-select-sm" required>
-                    <option value="" selected disabled>Move to…</option>
+                  <select name="dest_bucket" class="form-select form-select-sm" required style="min-width:160px;">
+                    <option value="" selected disabled>Move to bucket…</option>
                     {% for b in all_buckets %}
                       {% if b != bucket %}
                         <option value="{{ b }}">{{ b }}</option>
                       {% endif %}
                     {% endfor %}
                   </select>
+                  <input name="dest_key" class="form-control form-control-sm" placeholder="dest/path/ or dest/path/file.ext" style="width:240px;" />
                   <button class="btn btn-sm btn-warning">Move</button>
                 </form>
-
               </div>
             </td>
           </tr>
           {% endfor %}
         {% else %}
-          <tr><td colspan="2" class="text-center text-muted p-4">No objects found in this bucket.</td></tr>
+          <tr><td colspan="2" class="text-center text-muted p-4">No objects found in this folder.</td></tr>
         {% endif %}
       </tbody>
     </table>

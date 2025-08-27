@@ -17,19 +17,17 @@
     <tbody>
         {% for bucket in buckets %}
         <tr>
-            <td>
-                <a href="{{ url_for('view_bucket', bucket_name=bucket) }}">
-                    {{ bucket }}
-                </a>
-            </td>
+            <td><a href="{{ url_for('view_bucket', bucket_name=bucket) }}">{{ bucket }}</a></td>
             <td>
                 <form method="POST" action="/delete-bucket" style="display:inline;">
                     <input type="hidden" name="bucket_name" value="{{ bucket }}">
-                    <button class="btn btn-danger btn-sm" onclick="return confirm('Delete bucket? Must be empty.')">
-                        Delete
-                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="return confirm('Delete bucket? Must be empty.')">Delete</button>
                 </form>
             </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="2" class="text-center text-muted">No buckets available</td>
         </tr>
         {% endfor %}
     </tbody>
